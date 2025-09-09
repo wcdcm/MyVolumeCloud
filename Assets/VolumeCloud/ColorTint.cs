@@ -25,17 +25,17 @@ public sealed class ColorTintRenderer : PostProcessEffectRenderer<ColorTint>
         context.command.BlitFullscreenTriangle(context.source, context.destination, sheet, 0);//PostProcessing 会自动把 context.source 绑定到 Shader 的 _MainTex
         cmd.EndSample("ScreenColorTint");
     }
+    
     /*
-     *方法含义: 
+     *BlitFullscreenTriangle方法含义: 
      * BlitFullscreenTriangle(source, destination, sheet, passIndex)
      * source → 输入纹理（通常是屏幕当前渲染结果 context.source）
      * destination → 输出纹理（最终渲染目标 context.destination）
      * sheet → PostProcess PropertySheet，封装 用来进行后处理的Shader 和参数
      * passIndex → Shader 的 Pass 索引，决定使用 Shader 的哪一段逻辑
      */
-    
     /*
-     * 实际上做的事：
+     * BlitFullscreenTriangle实际上做的事：
      * 在 GPU 上绘制 一个覆盖整个屏幕的三角形（Full-Screen Triangle），顶点坐标覆盖 NDC 空间 [-1,1]
      * 为什么用三角形而不是四边形？
      * 减少一个顶点，避免多余插值，性能更高
