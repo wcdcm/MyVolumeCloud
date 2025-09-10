@@ -6,15 +6,29 @@ using UnityEngine.Rendering.PostProcessing;
 [PostProcess(typeof(ColorTintRenderer), PostProcessEvent.AfterStack, "Unity/ColorTint")]
 public class ColorTint : PostProcessEffectSettings
 {
-    [Tooltip("ColorTint")] 
-    public ColorParameter color = new ColorParameter { value = Color.white };
-    
+    [Tooltip("ColorTint")] public ColorParameter color = new ColorParameter { value = Color.white };
+
     [Range(0f, 1f), Tooltip("ColorTint intensity")]
     public FloatParameter blend = new FloatParameter { value = 0.5f };
 }
 
 public sealed class ColorTintRenderer : PostProcessEffectRenderer<ColorTint>
 {
+    private GameObject cloudBox;
+    private Vector3 boundsMin;
+    private Vector3 boundsMax;
+    Transform cloudBoxTransform;
+
+    public override void Init()
+    {
+        base.Init();
+        cloudBox = GameObject.Find("CloudBox");
+        if (cloudBox != null)
+        {
+            cloudBoxTransform = cloudBox.GetComponent<Transform>();//获取云盒的Transform组件
+        }
+    }
+
     public override void Render(PostProcessRenderContext context)
     {
         var cmd = context.command;
@@ -22,12 +36,27 @@ public sealed class ColorTintRenderer : PostProcessEffectRenderer<ColorTint>
         var sheet = context.propertySheets.Get(Shader.Find("Hidden/PostProcessing/ColorTint"));
         sheet.properties.SetColor(Shader.PropertyToID("_Color"), settings.color);
         sheet.properties.SetFloat(Shader.PropertyToID("_BlendMultiply"), settings.blend);
-        context.command.BlitFullscreenTriangle(context.source, context.destination, sheet, 0);//PostProcessing 会自动把 context.source 绑定到 Shader 的 _MainTex
+
+        //根据屏幕空间重建世界坐标,context.camera代表当前正在参与渲染的摄像机
+        Matrix4x4 projectionMatrix = GL.GetGPUProjectionMatrix(context.camera.projectionMatrix, false);
+        sheet.properties.SetMatrix(Shader.PropertyToID("_InverseProjectionMatrix"), projectionMatrix.inverse);
+        sheet.properties.SetMatrix(Shader.PropertyToID("_InverseViewMatrix"), context.camera.cameraToWorldMatrix);
+
+        //计算并传入云盒参数
+        if (cloudBoxTransform != null)
+        {
+            boundsMin = cloudBoxTransform.position - cloudBoxTransform.localScale/2;
+            boundsMax = cloudBoxTransform.position + cloudBoxTransform.localScale/2;
+            sheet.properties.SetVector(Shader.PropertyToID("_boundsMin"), boundsMin);
+            sheet.properties.SetVector(Shader.PropertyToID("_boundsMax"), boundsMax);
+        }
+        
+        context.command.BlitFullscreenTriangle(context.source, context.destination, sheet, 0); //PostProcessing 会自动把 context.source 绑定到 Shader 的 _MainTex
         cmd.EndSample("ScreenColorTint");
     }
-    
+
     /*
-     *BlitFullscreenTriangle方法含义: 
+     *BlitFullscreenTriangle方法含义:
      * BlitFullscreenTriangle(source, destination, sheet, passIndex)
      * source → 输入纹理（通常是屏幕当前渲染结果 context.source）
      * destination → 输出纹理（最终渲染目标 context.destination）
