@@ -1329,7 +1329,7 @@ MonoBehaviour:
     value: 1
   color:
     overrideState: 1
-    value: {r: 0.745283, g: 0.745283, b: 0.745283, a: 1}
+    value: {r: 0.5188679, g: 0.5188679, b: 0.5188679, a: 1}
   blend:
     overrideState: 1
     value: 0
