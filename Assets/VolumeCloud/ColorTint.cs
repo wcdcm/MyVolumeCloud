@@ -6,10 +6,16 @@ using UnityEngine.Rendering.PostProcessing;
 [PostProcess(typeof(ColorTintRenderer), PostProcessEvent.AfterStack, "Unity/ColorTint")]
 public class ColorTint : PostProcessEffectSettings
 {
-    [Tooltip("ColorTint")] public ColorParameter color = new ColorParameter { value = Color.white };
+    [Tooltip("ColorTint")] 
+    public ColorParameter color = new ColorParameter { value = Color.white };
 
     [Range(0f, 1f), Tooltip("ColorTint intensity")]
     public FloatParameter blend = new FloatParameter { value = 0.5f };
+    
+    [Tooltip("3D噪声纹理")]
+    public TextureParameter noise3D = new TextureParameter { value = null };
+    [Tooltip("3D噪声纹理尺寸")]
+    public FloatParameter noiseTexScale = new FloatParameter { value = 0.1f };
 }
 
 public sealed class ColorTintRenderer : PostProcessEffectRenderer<ColorTint>
@@ -49,6 +55,17 @@ public sealed class ColorTintRenderer : PostProcessEffectRenderer<ColorTint>
             boundsMax = cloudBoxTransform.position + cloudBoxTransform.localScale/2;
             sheet.properties.SetVector(Shader.PropertyToID("_boundsMin"), boundsMin);
             sheet.properties.SetVector(Shader.PropertyToID("_boundsMax"), boundsMax);
+        }
+        
+        //传入3D纹理
+        if (settings.noise3D.value != null)
+        {
+            sheet.properties.SetTexture(Shader.PropertyToID("_noise3D"), settings.noise3D.value);
+        }
+
+        if (settings.noiseTexScale.value != 0)
+        {
+            sheet.properties.SetFloat(Shader.PropertyToID("_noiseTexScale"), settings.noiseTexScale.value);
         }
         
         context.command.BlitFullscreenTriangle(context.source, context.destination, sheet, 0); //PostProcessing 会自动把 context.source 绑定到 Shader 的 _MainTex

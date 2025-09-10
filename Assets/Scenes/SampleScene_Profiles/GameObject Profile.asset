@@ -1329,10 +1329,17 @@ MonoBehaviour:
     value: 1
   color:
     overrideState: 1
-    value: {r: 0.6226415, g: 0.6226415, b: 0.6226415, a: 1}
+    value: {r: 0.745283, g: 0.745283, b: 0.745283, a: 1}
   blend:
     overrideState: 1
     value: 0
+  noise3D:
+    overrideState: 1
+    value: {fileID: 11700000, guid: d10ebc35a1808ab4daad12878be38059, type: 2}
+    defaultState: 1
+  noiseTexScale:
+    overrideState: 1
+    value: 0.01
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0

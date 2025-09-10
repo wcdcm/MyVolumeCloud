@@ -11,7 +11,11 @@ Shader "Hidden/PostProcessing/ColorTint"
             #include "Packages/com.unity.postprocessing/PostProcessing/Shaders/StdLib.hlsl"
             
             TEXTURE2D_SAMPLER2D(_MainTex,sampler_MainTex);
-            TEXTURE2D_SAMPLER2D(_CameraDepthTexture,sampler_CameraDepthTexture);//声明屏幕空间深度图和采样器
+            TEXTURE2D_SAMPLER2D(_CameraDepthTexture,sampler_CameraDepthTexture);//同时声明屏幕空间深度图纹理和采样器
+
+            //3D纹理：
+            TEXTURE3D_SAMPLER3D(_noise3D,sampler_noise3D);//同时声明3D纹理及其采样器
+            float _noiseTexScale;//3D纹理尺寸
             
             float4 _Color;
             float _BlendMultiply;
@@ -20,6 +24,7 @@ Shader "Hidden/PostProcessing/ColorTint"
 
             float3 _boundsMin;
             float3 _boundsMax;
+
             
             
             float4 GetWorldSpacePosition(float depth,float2 uv)//传入屏幕空间深度和屏幕空间UV
@@ -48,21 +53,13 @@ Shader "Hidden/PostProcessing/ColorTint"
                 return sum;
             }
 
-            float SampleDensity(float disLimit,float rayStep)
+            float SampleDensity(float3 rayPos)
             {
-                float sumDensity = 0;
-                float _disTravelled = 0;
-                for (int j = 0; j < 32;j++)
-                {
-                    if (disLimit > _disTravelled)
-                    {
-                        sumDensity += 0.1;
-                        // if (sumDensity > 1)
-                        //     break;
-                    }
-                    _disTravelled += rayStep;//每循环一次，步进距离加一点
-                }
-                return sumDensity;
+                //采样3D纹理
+                float3 uvw = rayPos * _noiseTexScale;
+                float4 shapeNoise = SAMPLE_TEXTURE3D(_noise3D,sampler_noise3D,uvw);
+                shapeNoise = smoothstep(0.2,0.8,shapeNoise);//调整阈值
+                return shapeNoise.r;
             }
 
                             //边界框最小值        //边界框最大值        //射线起点          //射线方向的倒数
@@ -89,7 +86,6 @@ Shader "Hidden/PostProcessing/ColorTint"
                 float4 worldPos = GetWorldSpacePosition(depth,i.texcoord);//计算屏幕空间每个片元对应的世界空间坐标
                 float3 rayStartPos = _WorldSpaceCameraPos;//世界空间相机位置（射线起始位置）
                 float3 worldViewDir = normalize(worldPos.xyz - rayStartPos.xyz);// 射线起始位置 到 屏幕空间每个片元对应的世界坐标 的方向向量
-
                 
                 float depthEyeLinear = length(worldPos.xyz - _WorldSpaceCameraPos);//片元的世界空间位置到摄像机 的 距离
                 float2 rayToContainerInfo = RayBoxDis(_boundsMin,_boundsMax,rayStartPos,1/worldViewDir);//得到是从相机发出的射线（方向指向片元），与 AABB 容器的交点信息
@@ -105,8 +101,27 @@ Shader "Hidden/PostProcessing/ColorTint"
                 
                 //每个片元对应的密度
                 //float cloudDensity = CloudRayMarching(rayStartPos,worldViewDir);
-                float cloudDensity = SampleDensity(disLimit,0.1);
+                //float cloudDensity = SampleDensity(disLimit,0.1,rayStartPos);
 
+                float3 entryPoint = rayStartPos + worldViewDir * disToBox;//射线进入云盒的点位
+                
+                //根据disLimit步进
+                float sumDensity = 0;//累计的密度值
+                float _travelledDis = 0;//光线在云盒内步进的距离
+                float rayStep = 2;//步长
+                //rayStep = 0.2;//步长
+                for (int j = 0;j < 32;j++)
+                {
+                    if (disLimit > _travelledDis)
+                    {
+                        rayStartPos = entryPoint + (worldViewDir * _travelledDis);//每步进一次修改一次起始点位
+                        //sumDensity += 0.1;//每步进一次加一点密度
+                        sumDensity += pow(SampleDensity(rayStartPos),5);//每步进一次采样一次3D纹理
+                    }
+                    _travelledDis += rayStep;
+                }
+                float cloudDensity = sumDensity;    
+                
                 //每个片元的密度 乘以 此处的纹理采样值（绘制云盒之前） 乘以 自定义的颜色值 + 绘制云盒之前的屏幕纹理采样值
                 float4 finalCol = saturate(cloudDensity * screenBaseCol * _Color + screenBaseCol);
                 
