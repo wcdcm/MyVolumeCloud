@@ -9,23 +9,38 @@ Shader "Hidden/PostProcessing/ColorTint"
             #pragma vertex VertDefault
             #pragma fragment Frag
             #include "Packages/com.unity.postprocessing/PostProcessing/Shaders/StdLib.hlsl"
-            
+
+            //屏幕纹理和深度图:
             TEXTURE2D_SAMPLER2D(_MainTex,sampler_MainTex);
             TEXTURE2D_SAMPLER2D(_CameraDepthTexture,sampler_CameraDepthTexture);//同时声明屏幕空间深度图纹理和采样器
-
             //3D纹理：
             TEXTURE3D_SAMPLER3D(_noise3D,sampler_noise3D);//同时声明3D纹理及其采样器
             float _noiseTexScale;//3D纹理尺寸
             
             float4 _Color;
             float _BlendMultiply;
+            
+            //世界空间坐标重建
             float4x4 _InverseProjectionMatrix;//投影矩阵逆矩阵（投影空间-》摄像机空间）
             float4x4 _InverseViewMatrix;//视图矩阵逆矩阵（摄像机空间-》世界空间）
 
+            //云盒参数
             float3 _boundsMin;
             float3 _boundsMax;
 
-            
+            //步进参数
+            float _step;
+            float _rayStep;
+
+            //大气散射参数
+            float4 _colA;
+            float4 _colB;
+            float _colorOffset1;
+            float _colorOffset2;
+            float3 _WorldSpaceLightPos0;//主光源方向
+            float3 _LightColor0;//主光源颜色
+            float _lightAbsorptionTowardSun;//云粒子朝向太阳的吸光系数
+            float _lightAbsorptionThroughCloud;//光穿过云层的吸收系数
             
             float4 GetWorldSpacePosition(float depth,float2 uv)//传入屏幕空间深度和屏幕空间UV
             {
@@ -62,7 +77,7 @@ Shader "Hidden/PostProcessing/ColorTint"
                 return shapeNoise.r;
             }
 
-                            //边界框最小值        //边界框最大值        //射线起点          //射线方向的倒数
+                            //边界框最小值        //边界框最大值        //射线起点          //射线方向的倒数 
             float2 RayBoxDis(float3 boundsMin,float3 boundsMax,float3 rayStartPos,float3 invRayDir)
             {
                 float3 t0 = (boundsMin - rayStartPos) * invRayDir;
@@ -77,6 +92,24 @@ Shader "Hidden/PostProcessing/ColorTint"
                 float disInsideBox = max(0,disB - disToBox);//光线在边界框内的距离
                 return float2(disToBox,disInsideBox);
                 
+            }
+
+            //对光线进行步进累计光照强度：
+            float3 LightMarch(float3 position,float travelledDis)
+            {
+                float3 dirToLight = _WorldSpaceLightPos0.xyz;
+                float disInsideBox = RayBoxDis(_boundsMin,_boundsMax,position,1/dirToLight).y;//获取从当前点位出发，沿灯光方向与云盒边界求交
+                float stepSize = disInsideBox/10;//根据总距离计算沿光线步进的步长
+                float totalDensity = 0;
+                for (int step = 0; step < 8; ++step)//沿着灯光的步进次数
+                {
+                    position += dirToLight * stepSize;//向着灯光步进
+                    totalDensity = max(0,SampleDensity(position) * stepSize);
+                }
+                float transmittance = exp(-totalDensity * _lightAbsorptionTowardSun);//透射率
+
+                //将高亮部分和暗部映射为3段颜色，亮->灯光颜色、中->ColorA、暗->ColorB
+                float3 cloudColor = lerp(_colA,_LightColor0,saturate(transmittance * _colorOffset1));
             }
             
             float4 Frag (VaryingsDefault i) : SV_Target
@@ -108,16 +141,16 @@ Shader "Hidden/PostProcessing/ColorTint"
                 //根据disLimit步进
                 float sumDensity = 0;//累计的密度值
                 float _travelledDis = 0;//光线在云盒内步进的距离
-                float rayStep = 2;//步长
+                float stepSize = _step;//步长
+                stepSize = exp(_step) * _rayStep;//???
                 for (int j = 0;j < 32;j++)
                 {
                     if (disLimit > _travelledDis)
                     {
-                        rayStartPos = entryPoint + (worldViewDir * _travelledDis);//每步进一次修改一次起始点位
-                        //sumDensity += 0.1;//每步进一次加一点密度
+                        rayStartPos = entryPoint + (worldViewDir * _travelledDis * _rayStep);//每步进一次修改一次起始点位
                         sumDensity += pow(SampleDensity(rayStartPos),5);//每步进一次采样一次3D纹理
                     }
-                    _travelledDis += rayStep;
+                    _travelledDis += stepSize;
                 }
                 float cloudDensity = sumDensity;    
                 

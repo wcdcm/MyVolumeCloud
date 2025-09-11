@@ -1329,7 +1329,7 @@ MonoBehaviour:
     value: 1
   color:
     overrideState: 1
-    value: {r: 0.5188679, g: 0.5188679, b: 0.5188679, a: 1}
+    value: {r: 0.5471698, g: 0.5471698, b: 0.5471698, a: 1}
   blend:
     overrideState: 1
     value: 0
@@ -1340,6 +1340,33 @@ MonoBehaviour:
   noiseTexScale:
     overrideState: 1
     value: 0.01
+  step:
+    overrideState: 1
+    value: 2
+  rayStep:
+    overrideState: 1
+    value: 0.543
+  colA:
+    overrideState: 0
+    value: {r: 1, g: 1, b: 1, a: 1}
+  colB:
+    overrideState: 0
+    value: {r: 1, g: 1, b: 1, a: 1}
+  colorOffset1:
+    overrideState: 0
+    value: 0.59
+  colorOffset2:
+    overrideState: 0
+    value: 1.02
+  lightAbsorptionTowardSun:
+    overrideState: 0
+    value: 0.1
+  lightAbsorptionThroughCloud:
+    overrideState: 0
+    value: 1
+  phaseParams:
+    overrideState: 0
+    value: {x: 0.72, y: 1, z: 0.5, w: 1.58}
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
