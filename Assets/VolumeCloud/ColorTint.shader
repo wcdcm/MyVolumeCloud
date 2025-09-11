@@ -109,7 +109,6 @@ Shader "Hidden/PostProcessing/ColorTint"
                 float sumDensity = 0;//累计的密度值
                 float _travelledDis = 0;//光线在云盒内步进的距离
                 float rayStep = 2;//步长
-                //rayStep = 0.2;//步长
                 for (int j = 0;j < 32;j++)
                 {
                     if (disLimit > _travelledDis)

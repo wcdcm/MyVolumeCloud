@@ -71,7 +71,6 @@ public sealed class ColorTintRenderer : PostProcessEffectRenderer<ColorTint>
         context.command.BlitFullscreenTriangle(context.source, context.destination, sheet, 0); //PostProcessing 会自动把 context.source 绑定到 Shader 的 _MainTex
         cmd.EndSample("ScreenColorTint");
     }
-
     /*
      *BlitFullscreenTriangle方法含义:
      * BlitFullscreenTriangle(source, destination, sheet, passIndex)

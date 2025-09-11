@@ -8,8 +8,8 @@ public class ShowCloudBox : MonoBehaviour
     {
         Gizmos.color = Color.green * new Color(0.5f,0.5f,0.5f,0.5f);
         Gizmos.DrawWireCube(transform.position, transform.localScale);
-
     }
+    
     void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.green;
